@@ -8,7 +8,7 @@ library(ggplot2)
 #Getting data
 
 filename <- c()
-for (a in 2019:2021) {
+for (a in 2019) {
   filename <- append(filename, sprintf("modis_%g_Brazil.csv", a) )
 }
 
@@ -29,25 +29,18 @@ ui <- fluidPage(
     titlePanel("Brazil Fires"),
     navbarPage("Fire map",
                tabPanel("Mapplot",
-                        mainPanel(
-                          sliderInput("year", 
-                                      label = "Which year should be displayed?", 
-                                      min = 2019, max = 2021, step = 1, value = 2020), 
-                          plotOutput("mapplot")))))                
+                        mainPanel(plotOutput("mapplot")))))                
 
 
 # Define server logic required
 server <- function(input, output) {
-  
-  final_data <- reactive({inter_br <- wildfiresBz %>%  filter(wildfiresBz$year == input$year)
-  })
   
   
   output$mapplot <- renderPlot({
     ggplot(map.data) + geom_map(aes(map_id = region), map = map.data, fill = "black", 
                                 color = "white", size = 0.25) + expand_limits(x = map.data$long, y = map.data$lat) + 
       scale_x_continuous(limits=c(-75, -33)) + scale_y_continuous(limits = c(-37, 8)) +
-      geom_point(data = final_data, aes(x = longitude, y = latitude, color = "red"), 
+      geom_point(data = wildfiresBz, aes(x = longitude, y = latitude, color = "red"), 
                  show.legend = FALSE, size = 0.01, alpha = 0.01) +
       theme(axis.line = element_blank(), 
             axis.text = element_blank(), 
