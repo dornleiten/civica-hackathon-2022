@@ -1,0 +1,70 @@
+---
+title: "Line_graph"
+output: html_document
+date: "2022-11-23"
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(lubridate)
+```
+
+# Data Preprocess
+```{r}
+# br = read_state()
+# deforestation data
+deforest <- read.xlsx("BRA.xlsx", sheet = 4)
+
+deforest_ratio <- deforest %>% select(name_state = subnational1, area = extent_2010_ha, threshold, 
+                                    deforestation_2021 = tc_loss_ha_2021, deforestation_2020=tc_loss_ha_2020, deforestation_2019=tc_loss_ha_2019, deforestation_2018=tc_loss_ha_2018,
+                                    deforestation_2017 = tc_loss_ha_2017, deforestation_2016=tc_loss_ha_2016, deforestation_2015=tc_loss_ha_2015, deforestation_2014=tc_loss_ha_2014,
+                                    deforestation_2013 = tc_loss_ha_2013, deforestation_2012=tc_loss_ha_2012, deforestation_2011=tc_loss_ha_2011) %>% 
+  filter(threshold == 10) %>% select(-threshold) %>% 
+  summarise('2021'=sum(deforestation_2021)*100/sum(area), "2020"=sum(deforestation_2020)*100/sum(area), "2019"=sum(deforestation_2019)*100/sum(area),
+            "2018"=sum(deforestation_2018)*100/sum(area), "2017"=sum(deforestation_2017)*100/sum(area), "2016"=sum(deforestation_2016)*100/sum(area),
+            "2015"=sum(deforestation_2015)*100/sum(area), "2014"=sum(deforestation_2014)*100/sum(area), "2013"=sum(deforestation_2013)*100/sum(area),
+            "2012"=sum(deforestation_2012)*100/sum(area), "2011"=sum(deforestation_2011)*100/sum(area)) %>%
+  pivot_longer(cols=everything(), names_to="year", values_to="deforestation_rate") 
+## date data
+deforest_ratio$year <- ymd(deforest_ratio$year, truncated=2L)
+
+# wildfire data
+wildfiresBz <- data.frame(read.csv("wildfiresBz.csv", stringsAsFactors=FALSE))
+wildfiresBz$year <- ymd(wildfiresBz$year, truncated=2L)
+
+wildfire_count <- wildfiresBz %>%
+  group_by(year) %>%
+  summarise(count=n_distinct(latitude))
+
+wildfire_deforest_data <- left_join(deforest_ratio, wildfire_count, by="year")
+wildfire_deforest_data 
+```
+```{r}
+scale <- 6/1000000
+min_first <- min(wildfire_deforest_data$count)
+max_first <- max(wildfire_deforest_data$count)
+
+plt <- ggplot(wildfire_deforest_data, aes(x=year)) +
+  geom_bar( aes(y=count), fill="#850101", stat="identity", width=250) +
+  geom_line(aes(y=deforestation_rate/scale), color="#056608", size=1.5) +
+  scale_y_continuous(
+    # Features of the first axis
+    name = "Wildfire Count",
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(trans=~.*scale, name="Deforestation Rate (%)")
+  ) +
+  labs(title="Wildfire count and deforestatin rate in Brazil") +
+  theme_bw() + 
+  theme(legend.text   = element_text(family="Times New Roman", hjust=0, size=8),
+        legend.title  = element_text(family="Times New Roman", face="bold", hjust=0, size=8),
+        plot.title    = element_text(family="Times New Roman", face="bold", hjust=0.5),
+        plot.subtitle = element_text(family="Times New Roman", face="bold", hjust=0.5),
+        axis.title.x  = element_text(family="Times New Roman", face="bold"),
+        axis.title.y  = element_text(family="Times New Roman", face="bold"),
+        axis.text.x   = element_text(family="Times New Roman"),
+        axis.text.y   = element_text(family="Times New Roman"))
+
+plt
+```
+
